@@ -1,58 +1,310 @@
-<!-- /Users/arrosid/Dev/project-tkj-rekognition/templates/index.html -->
 <!doctype html>
-<html>
+<html lang="id">
 <head>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Capture & Rekognition</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>AI Face Recognition</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-:root { color-scheme: light dark; }
-body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background: #fff; color: #111; }
-.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
-@media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
-.card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fafafa; }
-.card h3 { margin: 4px 0 8px; font-size: 1.1rem; }
-video, img { width: 100%; border-radius: 12px; background: #000; }
-.actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
-.btn { padding: 12px 16px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; min-height: 44px; font-size: 16px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-.btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
-.btn-secondary { background: #f3f4f6; }
-input[type=file] { flex: 1; min-width: 160px; }
-#preview { margin-top: 8px; }
-.file { display: block; margin-top: 8px; }
-.hint { margin-top: 6px; font-size: .9rem; color: #6b7280; }
-pre { background: #f5f5f7; padding: 12px; overflow: auto; border-radius: 12px; }
-.status { padding: 10px 12px; border-radius: 8px; }
-.status-ok { background: #dcfce7; color: #065f46; border: 1px solid #86efac; }
-.status-bad { background: #fee2e2; color: #7f1d1d; border: 1px solid #fecaca; }
+  :root {
+    --primary: #6366f1;
+    --primary-hover: #4f46e5;
+    --accent: #10b981;
+    --danger: #ef4444;
+    --bg-dark: #0f172a;
+    --glass: rgba(30, 41, 59, 0.7);
+    --glass-border: rgba(255, 255, 255, 0.1);
+    --text: #f8fafc;
+    --text-muted: #94a3b8;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-dark);
+    background-image: radial-gradient(circle at 50% 0%, #2e1065 0%, var(--bg-dark) 50%);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 480px;
+    padding: 20px;
+    box-sizing: border-box;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  header h2 {
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+    background: linear-gradient(to right, #818cf8, #c084fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+  header p {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    margin-top: 6px;
+  }
+
+  /* Card Wrapper */
+  .card {
+    background: var(--glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 24px;
+    padding: 20px;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Video & Preview Area */
+  .media-container {
+    position: relative;
+    width: 100%;
+    padding-top: 100%; /* 1:1 Aspect Ratio */
+    background: #000;
+    border-radius: 16px;
+    overflow: hidden;
+    margin-bottom: 20px;
+    border: 1px solid var(--glass-border);
+  }
+
+  video, img, canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  /* AI Scanner Effect */
+  .scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #00f0ff;
+    box-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff;
+    animation: scan 2s infinite linear;
+    display: none; /* Hidden by default */
+    z-index: 10;
+  }
+  .scan-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(to bottom, rgba(0,240,255,0), rgba(0,240,255,0.1) 50%, rgba(0,240,255,0));
+    animation: scan-bg 2s infinite linear;
+    display: none;
+    pointer-events: none;
+    z-index: 9;
+  }
+
+  @keyframes scan {
+    0% { top: 0; opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { top: 100%; opacity: 0; }
+  }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  
+  .full-width {
+    grid-column: span 2;
+  }
+
+  button {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    color: white;
+    padding: 14px;
+    border-radius: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  button.primary {
+    background: var(--primary);
+    border: none;
+  }
+  button.primary:hover:not(:disabled) {
+    background: var(--primary-hover);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+  }
+  button.secondary:hover:not(:disabled) {
+    background: rgba(255,255,255,0.1);
+  }
+
+  /* File Input Styling */
+  .file-upload-wrapper {
+    margin-top: 16px;
+    text-align: center;
+  }
+  .custom-file-upload {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-decoration: underline;
+  }
+  #fileInput { display: none; }
+
+  /* Result Section */
+  #result-card {
+    margin-top: 20px;
+    background: rgba(16, 185, 129, 0.1); /* Green tint default */
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    border-radius: 16px;
+    padding: 16px;
+    display: none; /* Hidden initially */
+    animation: slideUp 0.4s ease-out;
+  }
+  #result-card.unknown {
+    background: rgba(239, 68, 68, 0.1); /* Red tint */
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .result-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .stat-box {
+    background: rgba(0,0,0,0.2);
+    padding: 8px;
+    border-radius: 8px;
+    text-align: center;
+  }
+  .stat-label { font-size: 0.7rem; color: var(--text-muted); display: block; margin-bottom: 4px; }
+  .stat-value { font-size: 0.9rem; font-weight: 600; }
+
+  /* Loading */
+  .loader {
+    border: 3px solid rgba(255,255,255,0.1);
+    border-radius: 50%;
+    border-top: 3px solid white;
+    width: 20px;
+    height: 20px;
+    animation: spin 1s linear infinite;
+    display: none;
+  }
+  @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+  /* Utilities */
+  .hidden { display: none !important; }
+  #result-debug { display: none; } /* Sembunyikan debug */
+  
+  .camera-status {
+    position: absolute;
+    bottom: 10px;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    font-size: 0.75rem;
+    color: rgba(255,255,255,0.7);
+    pointer-events: none;
+    z-index: 20;
+  }
 </style>
 </head>
 <body>
-<h2>Ambil Foto, Upload & Cocokkan</h2>
-<div class="grid">
-  <section class="card">
-    <h3>Kamera</h3>
-    <video id="video" autoplay playsinline muted></video>
-    <canvas id="canvas" hidden></canvas>
-    <div class="actions">
-      <button id="startCamera" type="button" class="btn">Aktifkan Kamera</button>
-      <button id="snap" type="button" class="btn btn-secondary" disabled>Ambil Foto</button>
+
+<div class="container">
+  <header>
+    <h2>Identity Scanner</h2>
+    <p>Powered by AWS Rekognition</p>
+  </header>
+
+  <div class="card">
+    <div class="media-container">
+      <video id="video" autoplay playsinline muted></video>
+      <img id="preview" alt="Preview" class="hidden">
+      <canvas id="canvas" hidden></canvas>
+      
+      <div id="scanner" class="scan-line"></div>
+      <div id="scanner-bg" class="scan-overlay"></div>
+      
+      <div id="camStatus" class="camera-status">Kamera belum aktif</div>
     </div>
-    <div id="camStatus" class="hint"></div>
-  </section>
-  <section class="card">
-    <h3>Unggah Foto</h3>
-    <div class="actions">
-      <input id="fileInput" type="file" accept="image/*" capture="environment">
-      <button id="upload" type="button" class="btn btn-primary" disabled>Upload & Cocokkan</button>
+
+    <div class="controls">
+      <button id="startCamera" type="button" class="full-width secondary">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+        Aktifkan Kamera
+      </button>
+      
+      <button id="snap" type="button" class="secondary" disabled>
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+        Ambil Foto
+      </button>
+
+      <button id="upload" type="button" class="primary" disabled>
+        <span class="btn-text">Analisa Wajah</span>
+        <div class="loader"></div>
+      </button>
     </div>
-    <img id="preview" alt="Preview">
-  </section>
+
+    <div class="file-upload-wrapper">
+      <label for="fileInput" class="custom-file-upload">Atau upload file dari galeri</label>
+      <input id="fileInput" type="file" accept="image/*">
+    </div>
+
+    <div id="result-card">
+      <div class="result-header" id="status-header">
+        </div>
+      <div class="result-stats" id="analysis-stats">
+        </div>
+    </div>
+
+    <pre id="result-debug"></pre>
+  </div>
 </div>
-<section class="card">
-<h3>Hasil</h3>
-<div id="status" class="status"></div>
-<pre id="analysis"></pre>
-</section>
 
 <script>
 const video = document.getElementById('video');
@@ -62,35 +314,71 @@ const snapBtn = document.getElementById('snap');
 const uploadBtn = document.getElementById('upload');
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
-
-const status = document.getElementById('status');
-const analysisEl = document.getElementById('analysis');
+const resultDebug = document.getElementById('result-debug'); // Debug hidden element
 const camStatus = document.getElementById('camStatus');
+const scannerLine = document.getElementById('scanner');
+const scannerBg = document.getElementById('scanner-bg');
+const resultCard = document.getElementById('result-card');
+const statusHeader = document.getElementById('status-header');
+const analysisStats = document.getElementById('analysis-stats');
+const loader = document.querySelector('.loader');
+const btnText = document.querySelector('.btn-text');
+
 let lastBlob = null;
 
-function mapGender(v){if(v==='Male')return 'Laki-laki';if(v==='Female')return 'Perempuan';return '-';}
-function mapEmotion(t){const m={HAPPY:'senang',SAD:'sedih',ANGRY:'marah',CONFUSED:'bingung',DISGUSTED:'jijik',CALM:'tenang',SURPRISED:'terkejut',FEAR:'takut',UNKNOWN:'tidak diketahui'};return m[t]||t||'-';}
-function formatAnalysis(a){const g=mapGender(a.gender);const age=a.ageRange&&a.ageRange.low!=null&&a.ageRange.high!=null?`${a.ageRange.low}-${a.ageRange.high}`:'-';const emos=(a.emotions||[]).slice(0,3).map(e=>mapEmotion(e.type)).filter(Boolean);const emo=emos.length?emos.join(', '):(a.dominantEmotion?mapEmotion(a.dominantEmotion):'-');return `Kelamin: ${g}\nEkspresi: ${emo}\nPerkiraan umur: ${age}`;}
-function setStatus(t, ok){status.textContent=t;status.classList.toggle('status-ok',!!ok);status.classList.toggle('status-bad',!ok);}
+// Helper Data
+const translations = {
+  gender: { Male: 'Pria', Female: 'Wanita' },
+  emotion: { HAPPY:'Senang 😄', SAD:'Sedih 😢', ANGRY:'Marah 😡', CONFUSED:'Bingung 😕', DISGUSTED:'Jijik 🤢', CALM:'Tenang 😐', SURPRISED:'Terkejut 😲', FEAR:'Takut 😱', UNKNOWN:'?' }
+};
 
-if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
-  camStatus.textContent = 'Kamera butuh HTTPS. Gunakan domain dengan TLS atau tunnel (cloudflared/ngrok), atau pilih file manual.';
+// UI Helpers
+function showLoading(isLoading) {
+  if (isLoading) {
+    loader.style.display = 'block';
+    btnText.style.display = 'none';
+    uploadBtn.disabled = true;
+    snapBtn.disabled = true;
+    // Aktifkan efek scanner saat loading
+    scannerLine.style.display = 'block';
+    scannerBg.style.display = 'block';
+    resultCard.style.display = 'none';
+  } else {
+    loader.style.display = 'none';
+    btnText.style.display = 'block';
+    uploadBtn.disabled = false;
+    snapBtn.disabled = false;
+    scannerLine.style.display = 'none';
+    scannerBg.style.display = 'none';
+  }
 }
 
+function resetUI() {
+  preview.classList.add('hidden');
+  video.classList.remove('hidden');
+  resultCard.style.display = 'none';
+  scannerLine.style.display = 'none';
+}
+
+// Logic
 startBtn.onclick = async () => {
-  camStatus.textContent = '';
+  camStatus.textContent = 'Meminta akses kamera...';
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    const stream = await navigator.mediaDevices.getUserMedia({ 
+      video: { facingMode: 'user' }, // Default ke kamera depan (selfie)
+      audio: false 
+    });
     video.srcObject = stream;
     await video.play().catch(() => {});
+    
     snapBtn.disabled = false;
-    camStatus.textContent = 'Kamera aktif';
+    startBtn.style.display = 'none'; // Sembunyikan tombol start setelah aktif
+    startBtn.classList.remove('full-width'); // Reset grid
+    camStatus.textContent = '';
+    resetUI();
   } catch (e) {
     snapBtn.disabled = true;
-    const secureHint = (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1')
-      ? ' (butuh HTTPS untuk akses kamera)'
-      : '';
-    camStatus.textContent = 'Gagal mengaktifkan kamera' + secureHint;
+    camStatus.textContent = 'Gagal akses kamera. Gunakan upload file.';
   }
 };
 
@@ -99,30 +387,132 @@ snapBtn.onclick = () => {
   if (!w || !h) return;
   canvas.width = w; canvas.height = h;
   const ctx = canvas.getContext('2d');
+  
+  // Flip horizontal jika menggunakan kamera depan agar seperti cermin
+  // ctx.translate(w, 0); ctx.scale(-1, 1); 
+  
   ctx.drawImage(video, 0, 0, w, h);
-  canvas.toBlob(b => { lastBlob = b; preview.src = URL.createObjectURL(b); uploadBtn.disabled = false; }, 'image/jpeg', 0.9);
+  canvas.toBlob(b => { 
+    lastBlob = b; 
+    preview.src = URL.createObjectURL(b); 
+    preview.classList.remove('hidden');
+    video.classList.add('hidden');
+    uploadBtn.disabled = false; 
+    resultCard.style.display = 'none';
+  }, 'image/jpeg', 0.95);
 };
 
 fileInput.onchange = () => {
   const f = fileInput.files[0];
-  if (f) { lastBlob = f; preview.src = URL.createObjectURL(f); uploadBtn.disabled = false; }
+  if (f) { 
+    lastBlob = f; 
+    preview.src = URL.createObjectURL(f); 
+    preview.classList.remove('hidden');
+    video.classList.add('hidden');
+    uploadBtn.disabled = false;
+    resultCard.style.display = 'none';
+  }
 };
 
 uploadBtn.onclick = async () => {
   if (!lastBlob) return;
+  showLoading(true);
+  
   const fd = new FormData();
   fd.append('photo', lastBlob, 'capture.jpg');
-  const res = await fetch('/upload', { method: 'POST', body: fd });
-  const json = await res.json();
 
-  if (json.recognized) {
-    setStatus(`Dikenali: ${json.name || '(tanpa nama)'} (similarity ${json.similarity ? json.similarity.toFixed(1) : 'n/a'}%)`, true);
-    analysisEl.textContent = '';
-  } else {
-    setStatus(json.message || 'kamu tidak dikenali', false);
-    analysisEl.textContent = formatAnalysis(json.analysis || {});
+  try {
+    // Simulasi delay jaringan (opsional, biar efek scannernya kelihatan keren)
+    // await new Promise(r => setTimeout(r, 1500)); 
+
+    const res = await fetch('/upload', { method: 'POST', body: fd });
+    const json = await res.json();
+    
+    // Simpan ke debug element (tersembunyi)
+    resultDebug.textContent = JSON.stringify(json, null, 2);
+
+    displayResult(json);
+
+  } catch (err) {
+    alert("Terjadi kesalahan koneksi");
+  } finally {
+    showLoading(false);
   }
 };
+
+function displayResult(json) {
+  resultCard.style.display = 'block';
+  
+  // 1. Cek Status Pengenalan (Recognized vs Unknown)
+  if (json.recognized) {
+    resultCard.className = ''; // Reset class (hijau default)
+    const confidence = json.similarity ? Math.round(json.similarity) : 0;
+    
+    statusHeader.innerHTML = `
+      <span style="font-size:1.5rem">✅</span>
+      <div>
+        <div style="color:var(--accent)">Dikenali: ${json.name}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:400">Akurasi: ${confidence}%</div>
+      </div>
+    `;
+    analysisStats.innerHTML = `<div class="stat-box" style="grid-column: span 3">User terdaftar dalam sistem.</div>`;
+  } else {
+    // Unknown / Analisa Mode
+    resultCard.className = 'unknown'; // Warna merah
+    const msg = json.message || 'Wajah tidak dikenali';
+    
+    statusHeader.innerHTML = `
+      <span style="font-size:1.5rem">⚠️</span>
+      <div>
+        <div style="color:var(--danger)">${msg}</div>
+        <div style="font-size:0.75rem; color:var(--text-muted); font-weight:400">Mode Analisa Umum</div>
+      </div>
+    `;
+
+    // Parsing Data Analisa
+    if (json.analysis) {
+      const a = json.analysis;
+      const genderRaw = a.gender || 'UNKNOWN';
+      const genderVal = translations.gender[genderRaw] || genderRaw;
+      
+      // Umur
+      const age = (a.ageRange && a.ageRange.low && a.ageRange.high) 
+        ? `${a.ageRange.low} - ${a.ageRange.high} Th` 
+        : '-';
+
+      // Emosi
+      let emotionVal = '-';
+      if (a.emotions && a.emotions.length > 0) {
+        emotionVal = translations.emotion[a.emotions[0].type] || a.emotions[0].type;
+      } else if (a.dominantEmotion) {
+        emotionVal = translations.emotion[a.dominantEmotion] || a.dominantEmotion;
+      }
+
+      analysisStats.innerHTML = `
+        <div class="stat-box">
+          <span class="stat-label">Gender</span>
+          <div class="stat-value">${genderVal}</div>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Umur</span>
+          <div class="stat-value">${age}</div>
+        </div>
+        <div class="stat-box">
+          <span class="stat-label">Ekspresi</span>
+          <div class="stat-value">${emotionVal}</div>
+        </div>
+      `;
+    } else {
+      analysisStats.innerHTML = `<div class="stat-box" style="grid-column: span 3">Data wajah tidak terdeteksi jelas.</div>`;
+    }
+  }
+}
+
+// Cek HTTPS
+if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+  camStatus.textContent = '⚠️ HTTPS Diperlukan untuk kamera';
+  camStatus.style.color = '#ef4444';
+}
 </script>
 </body>
 </html>
