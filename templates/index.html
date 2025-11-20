@@ -5,31 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Capture & Rekognition</title>
 <style>
-body { font-family: system-ui, sans-serif; margin: 16px; }
-video, img { width: 100%; max-width: 480px; border-radius: 8px; background: #000; }
-button { padding: 10px 14px; margin-right: 8px; margin-top: 8px; }
-pre { background: #f5f5f7; padding: 12px; overflow: auto; border-radius: 8px; }
+:root { color-scheme: light dark; }
+body { font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; margin: 16px; background: #fff; color: #111; }
+.grid { display: grid; gap: 16px; grid-template-columns: 1fr; }
+@media (min-width: 720px) { .grid { grid-template-columns: 1fr 1fr; } }
+.card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 12px; background: #fafafa; }
+.card h3 { margin: 4px 0 8px; font-size: 1.1rem; }
+video, img { width: 100%; border-radius: 12px; background: #000; }
+.actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; flex-wrap: wrap; }
+.btn { padding: 12px 16px; border-radius: 10px; border: 1px solid #d1d5db; background: #fff; min-height: 44px; font-size: 16px; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.btn-primary { background: #2563eb; color: #fff; border-color: #2563eb; }
+.btn-secondary { background: #f3f4f6; }
+input[type=file] { flex: 1; min-width: 160px; }
+#preview { margin-top: 8px; }
+.file { display: block; margin-top: 8px; }
+.hint { margin-top: 6px; font-size: .9rem; color: #6b7280; }
+pre { background: #f5f5f7; padding: 12px; overflow: auto; border-radius: 12px; }
+.status { padding: 10px 12px; border-radius: 8px; }
+.status-ok { background: #dcfce7; color: #065f46; border: 1px solid #86efac; }
+.status-bad { background: #fee2e2; color: #7f1d1d; border: 1px solid #fecaca; }
 </style>
 </head>
 <body>
-<h2>Ambil Foto, Upload ke S3, Cocokkan Rekognition</h2>
-<video id="video" autoplay playsinline muted></video>
-<canvas id="canvas" hidden></canvas>
-<div>
-<button id="startCamera" type="button">Aktifkan Kamera</button>
-<button id="snap" type="button" disabled>Ambil Foto</button>
-<button id="upload" type="button" disabled>Upload & Cocokkan</button>
+<h2>Ambil Foto, Upload & Cocokkan</h2>
+<div class="grid">
+  <section class="card">
+    <h3>Kamera</h3>
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="canvas" hidden></canvas>
+    <div class="actions">
+      <button id="startCamera" type="button" class="btn">Aktifkan Kamera</button>
+      <button id="snap" type="button" class="btn btn-secondary" disabled>Ambil Foto</button>
+    </div>
+    <div id="camStatus" class="hint"></div>
+  </section>
+  <section class="card">
+    <h3>Unggah Foto</h3>
+    <div class="actions">
+      <input id="fileInput" type="file" accept="image/*" capture="environment">
+      <button id="upload" type="button" class="btn btn-primary" disabled>Upload & Cocokkan</button>
+    </div>
+    <img id="preview" alt="Preview">
+  </section>
 </div>
-<div id="camStatus"></div>
-<p>Alternatif pilih file:</p>
-<input id="fileInput" type="file" accept="image/*" capture="environment">
-<img id="preview" alt="Preview">
-<h3>Status</h3>
-<div id="status"></div>
-<h3>Analisa</h3>
+<section class="card">
+<h3>Hasil</h3>
+<div id="status" class="status"></div>
 <pre id="analysis"></pre>
-<h3>Hasil (debug)</h3>
-<pre id="result"></pre>
+</section>
+
 <script>
 const video = document.getElementById('video');
 const canvas = document.getElementById('canvas');
@@ -38,7 +62,7 @@ const snapBtn = document.getElementById('snap');
 const uploadBtn = document.getElementById('upload');
 const fileInput = document.getElementById('fileInput');
 const preview = document.getElementById('preview');
-const result = document.getElementById('result');
+
 const status = document.getElementById('status');
 const analysisEl = document.getElementById('analysis');
 const camStatus = document.getElementById('camStatus');
@@ -47,6 +71,7 @@ let lastBlob = null;
 function mapGender(v){if(v==='Male')return 'Laki-laki';if(v==='Female')return 'Perempuan';return '-';}
 function mapEmotion(t){const m={HAPPY:'senang',SAD:'sedih',ANGRY:'marah',CONFUSED:'bingung',DISGUSTED:'jijik',CALM:'tenang',SURPRISED:'terkejut',FEAR:'takut',UNKNOWN:'tidak diketahui'};return m[t]||t||'-';}
 function formatAnalysis(a){const g=mapGender(a.gender);const age=a.ageRange&&a.ageRange.low!=null&&a.ageRange.high!=null?`${a.ageRange.low}-${a.ageRange.high}`:'-';const emos=(a.emotions||[]).slice(0,3).map(e=>mapEmotion(e.type)).filter(Boolean);const emo=emos.length?emos.join(', '):(a.dominantEmotion?mapEmotion(a.dominantEmotion):'-');return `Kelamin: ${g}\nEkspresi: ${emo}\nPerkiraan umur: ${age}`;}
+function setStatus(t, ok){status.textContent=t;status.classList.toggle('status-ok',!!ok);status.classList.toggle('status-bad',!ok);}
 
 if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
   camStatus.textContent = 'Kamera butuh HTTPS. Gunakan domain dengan TLS atau tunnel (cloudflared/ngrok), atau pilih file manual.';
@@ -89,12 +114,12 @@ uploadBtn.onclick = async () => {
   fd.append('photo', lastBlob, 'capture.jpg');
   const res = await fetch('/upload', { method: 'POST', body: fd });
   const json = await res.json();
-  result.textContent = JSON.stringify(json, null, 2);
+
   if (json.recognized) {
-    status.textContent = `Dikenali: ${json.name || '(tanpa nama)'} (similarity ${json.similarity ? json.similarity.toFixed(1) : 'n/a'}%)`;
+    setStatus(`Dikenali: ${json.name || '(tanpa nama)'} (similarity ${json.similarity ? json.similarity.toFixed(1) : 'n/a'}%)`, true);
     analysisEl.textContent = '';
   } else {
-    status.textContent = json.message || 'kamu tidak dikenali';
+    setStatus(json.message || 'kamu tidak dikenali', false);
     analysisEl.textContent = formatAnalysis(json.analysis || {});
   }
 };
